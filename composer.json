@@ -1,0 +1,7 @@
+{
+    "name": "Jerry/laravel-pay",
+    "require": {},
+    "autoload":{
+        "psr-4":{"Pay\\":"pay/"}
+    }
+}
