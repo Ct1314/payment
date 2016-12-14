@@ -1,7 +1,7 @@
 <?php
 
 namespace Pay;
-class HttpClient
+class RequestHandle
 {
     /**
      * 请求信息
@@ -61,9 +61,13 @@ class HttpClient
      * 响应http协议号
      * @var $responseHttpCode
      */
-    public $responseHttpCode;
+    public $response;
 
     public $requestUrl;
+
+    protected $requestPara;
+
+    protected $realPara;
     public function __construct()
     {
         $this->initHttpClient();
@@ -157,7 +161,12 @@ class HttpClient
     {
         $this->caFile = $caFile;
     }
-    public function call()
+
+    protected function RequestPara()
+    {
+        $this->realPara = explode('?',$this->responseContent);
+    }
+    protected function call()
     {
         // 启动会话
         $ch = curl_init();
@@ -168,14 +177,13 @@ class HttpClient
         // 检查ssl加密算法是否存在
         curl_setopt($ch,CURLOPT_SSL_VERIFYHOST,2);
         // 设置请求类型
-        $request = explode('?',$this->requestContent);
+       $this->RequestPara();
         // 设置请求url
-        if(count($request)>=2 && $this->method = 'POST') {
+        if(count($this->realPara)>=2 && $this->method = 'POST') {
             curl_setopt($ch,CURLOPT_POST,1);
-            curl_setopt($ch,CURLOPT_URL,$this->requestUrl);
+            curl_setopt($ch,CURLOPT_URL,$this->realPara[0]);
         // 设置请求数据
-            curl_setopt($ch,CURLOPT_POSTFIELDS,$request[1]);
-
+            curl_setopt($ch,CURLOPT_POSTFIELDS,$this->realPara[1]);
         }else {
             // get请求
             curl_setopt($ch,CURLOPT_URL,$this->requestContent);
@@ -194,22 +202,12 @@ class HttpClient
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
         }
         // 执行
-        $ret = curl_exec($ch);
-        $this->responseHttpCode = curl_getinfo($ch,CURLINFO_HTTP_CODE);
-        $this->redirect(curl_getinfo($ch)['redirect_url']);
-//        if($response == NULL) {
-//            $this->errorInfo = "call http error:" .curl_errno($ch). "-" .curl_error($ch);
-//            curl_close($ch);
-//            return false;
-//        }
-//        if($this->responseHttpCode != 200) {
-//            $this->errorInfo = "call http error httpcode = ". $this->responseHttpCode;
-//            var_dump( $this->errorInfo);
-//            curl_close($ch);
-//            return false;
-//        }
+        curl_exec($ch);
+        $this->response = curl_getinfo($ch);
         curl_close($ch);
-
+        if($this->response['http_code'] == 301 || $this->response['http_code'] == 302) {
+            $this->redirect($this->response['redirect_url']);
+        }
         return true;
     }
     public function redirect($url)

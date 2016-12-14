@@ -4,14 +4,6 @@ namespace Pay\Interfaces;
 interface PayInterface
 {
 	/**
-	* Constructor
-	* @param array pay_info 
-	* @param array order_info
-	* @access public
-	*/
-	public function __construct();
-
-	/**
 	* pay
 	* @param array order_info
 	* @access public

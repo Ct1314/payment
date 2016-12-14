@@ -3,73 +3,84 @@ namespace Pay\AliPay;
 
 use Pay\Exception\PayException;
 use Pay\Interfaces\PayInterface;
-use Pay\HttpClient;
+use Pay\AliPay\AliPayHandle;
 class AliPay implements PayInterface
 {
     /**
-     *  请求信息参数
+     *  pay request parameters
      * @var array
      */
     private $pay_info;
 
     /**
-     * 订单信息
+     * order parameters
      * @var
      */
     public $order_info;
 
     /**
-     * 支付信息参数
+     * config parameters
      * @var array
      */
     public $parameter = [];
 
-    public function __construct()
-    {
-    }
-
     /**
-     * 订单支付
+     * submit pay
      * @param array $order_info
      * @throws PayException
      */
     public function pay(array $order_info)
     {
-        // 检测订单是否存在
         if(!$order_info) {
-            throw new PayException('NullException');
+            throw new PayException('Order Parameters NullException');
         }
         // 设置订单值
         $this->initOrderInfo($order_info);
         $this->initParameter();
-        echo $this->request();
+        $this->request();
     }
 
     /**
-     * 初始化请求参数
+     * init parameters
      */
     private function initParameter()
     {
-        /**
-         * 构造请求的参数数组
-         */
-        $this->pay_info ['service']         = $this->parameter['service'];
-        $this->pay_info ['partner']         = $this->parameter['partner'];
-        $this->pay_info ['seller_id']       = $this->parameter['seller_id'];
-        $this->pay_info ['payment_type']    = $this->parameter['payment_type'];
-        $this->pay_info ['notify_url']      = $this->parameter['notify_url'];
-        $this->pay_info ['return_url']      = $this->parameter['return_url'];
-        $this->pay_info ['anti_phishing_key'] = isset($this->parameter['anti_phishing_key'])?$this->parameter['anti_phishing_key']:'';
-        $this->pay_info ['exter_invoke_ip'] = isset($this->parameter['exter_invoke_ip'])?$this->parameter['exter_invoke_ip']:'';
-        $this->pay_info ['out_trade_no']    = $this->order_info['out_trade_no'];
-        $this->pay_info ['subject']         = $this->order_info['subject'];
-        $this->pay_info ['total_fee']       = $this->order_info['total_fee'];
-        $this->pay_info ['body']            = $this->order_info['body'];
-        $this->pay_info ['_input_charset']  = $this->parameter['_input_charset'];
+        $this->pay_info ['service']             = $this->parameter['service'];
+        $this->pay_info ['partner']             = $this->parameter['partner'];
+        $this->pay_info ['seller_id']           = $this->parameter['seller_id'];
+        $this->pay_info ['payment_type']        = $this->parameter['payment_type'];
+        $this->pay_info ['notify_url']          = $this->parameter['notify_url'];
+        $this->pay_info ['return_url']          = $this->parameter['return_url'];
+        $this->pay_info ['anti_phishing_key']   = isset($this->parameter['anti_phishing_key'])?$this->parameter['anti_phishing_key']:'';
+        $this->pay_info ['exter_invoke_ip']     = isset($this->parameter['exter_invoke_ip'])?$this->parameter['exter_invoke_ip']:'';
+        $this->pay_info ['out_trade_no']        = $this->order_info['out_trade_no'];
+        $this->pay_info ['subject']             = $this->order_info['subject'];
+        $this->pay_info ['total_fee']           = $this->order_info['total_fee'];
+        $this->pay_info ['body']                = $this->order_info['body'];
+        $this->pay_info ['_input_charset']      = $this->parameter['_input_charset'];
     }
 
     /**
-     * 过滤空值
+     * init order parameters
+     * @param array $order_info
+     */
+    private function initOrderInfo(array $order_info)
+    {
+        $this->order_info = $order_info;
+    }
+
+    /**
+     * establish pay request
+     */
+    public function request()
+    {
+        $createRequestUrl = $this->createRequestUrl();
+
+        $this->AliPayRequestHandle($createRequestUrl);
+    }
+
+    /**
+     * filter null parameters
      * @param array $para
      * @return array
      */
@@ -84,16 +95,86 @@ class AliPay implements PayInterface
     }
 
     /**
-     * 初始化订单信息
-     * @param array $order_info
+     * parameters sort
+     * @param $para
+     * @return mixed
      */
-    private function initOrderInfo(array $order_info)
+    public function parametersSort($para)
     {
-        $this->order_info = $order_info;
+        ksort($para);
+        reset($para);
+        return $para;
     }
 
     /**
-     * 设置多个参数
+     * 生成url链接
+     * @return string
+     */
+    public function createUrl($para)
+    {
+        $requestUrl = "";
+        foreach($para as $key => $value) {
+            $requestUrl .=  $key . "=" .$value ."&";
+        }
+        $requestReplaceUrl = rtrim($requestUrl,"&");
+        return $requestReplaceUrl;
+    }
+
+    /**
+     * create request url
+     * @return string
+     */
+    public function createRequestUrl()
+    {
+        /*use filter method to filter parameters null value*/
+        $para = $this->filterPara($this->pay_info);
+
+        /*with sort parameters*/
+        $para = $this->parametersSort($para);
+
+        /*create sign url*/
+        $url = $this->createUrl($para);
+
+        /* generate sign  */
+        $sign = $this->sign($url);
+
+        $para ['sign']      = $sign;
+        $createRequestUrl = $this->parameter['requestUrl'].$url.'&sign='.$sign.'&sign_type='.$this->parameter['sign_type'];
+        return $createRequestUrl;
+    }
+
+
+    /**
+     * with url md5 encrypt
+     * @param $param
+     * @return string
+     */
+    public function sign($param)
+    {
+
+        $sign = "";
+        if( strtoupper( trim($this->parameter['sign_type']))== "MD5" ) {
+            $sign .= md5($param.$this->parameter['key']);
+        }
+        return $sign;
+    }
+    /**
+     * pay request handle
+     * @param $para
+     */
+    public function AliPayRequestHandle($para)
+    {
+        $http = new AliPayHandle();
+
+        /* set request content */
+        $http->setRequestContent($para);
+
+        /* establish request */
+        $http->call();
+    }
+
+    /**
+     * set multiple parameters
      * @param $params
      */
     public function setAllConfig(array $params)
@@ -106,7 +187,7 @@ class AliPay implements PayInterface
     }
 
     /**
-     * 设置单个参数
+     * set one parameters
      * @param $param
      */
     public function setConfig($param)
@@ -137,95 +218,5 @@ class AliPay implements PayInterface
     public function verifyReturn()
     {
 
-    }
-
-    /**
-     * 加签验证
-     * @param $param
-     * @return string
-     */
-    public function sign($param)
-    {
-
-        $sign = "";
-        if( strtoupper( trim($this->parameter['sign_type']))== "MD5" ) {
-            $sign .= md5($param.$this->parameter['key']);
-        }
-        return $sign;
-    }
-
-    /**
-     * 生成url链接
-     * @return string
-     */
-    public function createUrl($para)
-    {
-        $requestUrl = "";
-        foreach($para as $key => $value) {
-            $requestUrl .=  $key . "=" .$value ."&";
-        }
-        $requestReplaceUrl = rtrim($requestUrl,"&");
-        return $requestReplaceUrl;
-    }
-
-
-    public function createRequestUrl($url)
-    {
-        $sign = $this->sign($url);
-
-        $para ['sign']      = $sign;
-        $createRequestUrl = $this->parameter['requestUrl'].$url.'&sign='.$sign.'&sign_type='.$this->parameter['sign_type'];
-//        var_dump($createRequestUrl);
-        return $createRequestUrl;
-    }
-
-    /**
-     * 排序参数
-     * @param $para
-     * @return mixed
-     */
-    public function argumentSort($para)
-    {
-        ksort($para);
-        reset($para);
-        return $para;
-    }
-
-    /**
-     * 发起请求
-     */
-    public function request()
-    {
-        // 过滤空值
-        $para = $this->filterPara($this->pay_info);
-        // 对参数排序
-        $para = $this->argumentSort($para);
-        // 生成url
-        $url = $this->createUrl($para);
-        $createRequestUrl = $this->createRequestUrl($url);
-        $this->http($createRequestUrl);
-//        // 生成签名
-//        $sign = $this->sign($url);
-//
-//        $para ['sign']      = $sign;
-//        $para ['sign_type'] = $this->parameter['sign_type'];
-//        $html = '';
-//        $html.="<form id='alipaysubmit' action='".$this->parameter['requestUrl'].'_input_charset='.$this->pay_info['_input_charset']."' method='post' >";
-//        foreach ($para as $key=>$value) {
-//            $html .= "<input type='hidden' name='".$key."' value='".$value."'>";
-//        }
-//        $html.="<input type='submit' style='display: none'>";
-//        $html.="<form>";
-//        $html.="<script>document.forms['alipaysubmit'].submit();</script>";
-//        return $html;
-    }
-
-    public function http($para)
-    {
-        $http = new HttpClient();
-        $http->setRequestUrl($this->parameter['requestUrl'].'_input_charset='.$this->pay_info['_input_charset']);
-        $http->setRequestContent($para);
-        $http->call();
-        echo $http->getErrorInfo();
     }
 }
