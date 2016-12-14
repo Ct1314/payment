@@ -3,9 +3,9 @@ require __DIR__ ."/vendor/autoload.php";
 $pay = \Pay\PayFactory::create('alipay');
 $params = [
     'requestUrl'=>'https://mapi.alipay.com/gateway.do?',
-    'partner'=>'2088901067169902',
-    'seller_id'=>'2088901067169902',
-    'key'=>'oqc0sbpwfp2gvkmcrcmxbp6d5z5j489t',
+    'partner'=>'',
+    'seller_id'=>'',
+    'key'=>'',
     'notify_url'=>'http://商户网址/create_direct_pay_by_user-PHP-UTF-8/notify_url.php',
     'return_url'=>'http://商户网址/create_direct_pay_by_user-PHP-UTF-8/return_url.php',
     'sign_type'=>'MD5',
